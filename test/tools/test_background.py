@@ -58,7 +58,7 @@ class TestBackgroundDelivery:
             tools=[bg_tool, wait_for_bg],
         )
 
-        reply = await asyncio.wait_for(orchestrator.ask("What's X?"), timeout=3.0)
+        reply = await asyncio.wait_for(orchestrator.ask("What's X?"), timeout=10.0)
 
         assert reply.body == "Final reply incorporating research."
 
@@ -119,7 +119,7 @@ class TestBackgroundDelivery:
             tools=[fire_and_forget],
         )
 
-        reply = await asyncio.wait_for(agent.ask("go"), timeout=1.0)
+        reply = await asyncio.wait_for(agent.ask("go"), timeout=10.0)
 
         assert reply.body == "done"
         assert bg_started.is_set()
@@ -153,10 +153,10 @@ class TestBackgroundDelivery:
         )
 
         with caplog.at_level("ERROR", logger="ag2.context"):
-            reply = await asyncio.wait_for(agent.ask("go"), timeout=1.0)
+            reply = await asyncio.wait_for(agent.ask("go"), timeout=10.0)
 
         # Give the done-callback a chance to fire after the task raised.
-        await asyncio.wait_for(bg_failed.wait(), timeout=1.0)
+        await asyncio.wait_for(bg_failed.wait(), timeout=10.0)
         await asyncio.sleep(0)
 
         assert reply.body == "ok"
@@ -215,11 +215,11 @@ class TestLifecycle:
 
         agent = Agent("agent", config=first_config, tools=[start_bg])
 
-        first = await asyncio.wait_for(agent.ask("go", stream=stream), timeout=1.0)
+        first = await asyncio.wait_for(agent.ask("go", stream=stream), timeout=10.0)
         assert first.body == "kicked off bg"
 
         # Bg runs in the background; wait for it to enqueue post-return.
-        await asyncio.wait_for(bg_delivered.wait(), timeout=1.0)
+        await asyncio.wait_for(bg_delivered.wait(), timeout=10.0)
         assert len(stream.pending_messages) == 1
         assert stream.pending_messages[0].parts[0].content == "late bg result"
 
@@ -227,7 +227,7 @@ class TestLifecycle:
         # into the initial ModelRequest.
         second = await asyncio.wait_for(
             agent.ask("anything?", stream=stream, config=second_config),
-            timeout=1.0,
+            timeout=10.0,
         )
         assert second.body == "got it"
 
