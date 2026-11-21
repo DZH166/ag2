@@ -62,6 +62,7 @@ class TestClient(LLMClient):
     ) -> None:
         self.events = iter(events)
         self.raise_tool_errors = raise_tool_errors
+        self.consumed = 0
 
     async def __call__(
         self,
@@ -75,7 +76,19 @@ class TestClient(LLMClient):
                     raise m.error
 
         while True:
-            scripted = next(self.events)
+            try:
+                scripted = next(self.events)
+            except StopIteration:
+                # A bare ``StopIteration`` leaving a coroutine is rewritten by PEP 479
+                # into ``RuntimeError: coroutine raised StopIteration``, which names
+                # neither this double nor the script that ran out — the caller only
+                # sees an opaque failure inside the framework. One extra model call is
+                # a script that is too short, so say that.
+                raise RuntimeError(
+                    f"TestClient script exhausted after {self.consumed} turn(s): the agent asked for another "
+                    "model turn, but the script has none left. Add a turn to TestConfig(...)."
+                ) from None
+            self.consumed += 1
 
             if isinstance(scripted, BaseException):
                 raise scripted
